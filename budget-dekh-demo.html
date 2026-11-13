@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Budget Dekh</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <style>
+    :root {
+      --bg: #0A0A0A;
+      --surface: #111111;
+      --surface-2: #1A1A1A;
+      --gold: #F5C518;
+      --gold-dim: #C9962A;
+      --gold-glow: rgba(245,197,24,0.12);
+      --red-deal: #FF4C4C;
+      --green-save: #2ECC71;
+      --text: #F0EDE6;
+      --text-muted: #6B6455;
+      --border: rgba(245,197,24,0.10);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', -apple-system, sans-serif; }
+    
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+      cursor: none; /* Hide default cursor */
+    }
+
+    /* Scroll Progress */
+    #progress-bar {
+      position: fixed; top: 0; left: 0; height: 3px; background: var(--gold);
+      width: 0%; z-index: 1000; transition: width 0.1s;
+    }
+
+    /* Custom Cursor */
+    @media (pointer: fine) {
+      .cursor-dot {
+        position: fixed; top: 0; left: 0; width: 6px; height: 6px;
+        background: var(--gold); border-radius: 50%; pointer-events: none;
+        z-index: 9999; transform: translate(-50%, -50%);
+      }
+      .cursor-ring {
+        position: fixed; top: 0; left: 0; width: 30px; height: 30px;
+        border: 1px solid var(--gold); border-radius: 50%; pointer-events: none;
+        z-index: 9998; transform: translate(-50%, -50%);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 8px; font-weight: bold; color: var(--bg); text-transform: uppercase;
+        transition: width 0.3s, height 0.3s, background 0.3s, border-color 0.3s;
+      }
+      .cursor-ring.hover-select {
+        width: 60px; height: 60px; background: rgba(245,197,24,0.15); border-color: transparent;
+      }
+      .cursor-ring.hover-select::after { content: "SELECT"; color: var(--gold); }
+      .cursor-ring.hover-deal {
+        width: 40px; height: 40px; border-color: transparent; background: transparent;
+      }
+      .cursor-ring.hover-deal::after {
+        content: "🏷️"; font-size: 28px; transform: rotate(20deg);
+      }
+      .cursor-ring.hover-resize {
+        width: 40px; height: 40px; background: var(--gold-glow); border-color: var(--gold);
+        box-shadow: 0 0 15px var(--gold-glow);
+      }
+      .cursor-ring.hover-resize::after { content: "↔"; color: var(--gold); font-size: 16px; }
+    }
+    @media (pointer: coarse) { body { cursor: auto; } .cursor-dot, .cursor-ring { display: none; } }
+
+    /* Layout Utils */
+    .container { max-width: 1000px; margin: 0 auto; padding: 2rem; position: relative; z-index: 10; }
+    .section { margin-bottom: 6rem; }
+
+    /* Navbar */
+    nav { padding: 1.5rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    .logo { font-size: 1.5rem; font-weight: 800; display: flex; gap: 2px; cursor: none; }
+    .logo span { display: inline-block; transition: color 0.3s; }
+
+    /* Hero */
+    #hero {
+      position: relative; padding: 6rem 0; text-align: center;
+      min-height: 50vh; display: flex; flex-direction: column; justify-content: center; align-items: center;
+    }
+    .hero-title {
+      font-size: clamp(3rem, 8vw, 6rem); font-weight: 900; line-height: 1.1; margin-bottom: 1rem;
+      display: flex; gap: 1rem; justify-content: center;
+    }
+    .hero-word {
+      clip-path: polygon(0 100%, 100% 100%, 100% 100%, 0% 100%);
+      transform: translateY(20px);
+    }
+    .hero-sub {
+      font-size: clamp(1rem, 2vw, 1.25rem); color: var(--text-muted); height: 2rem;
+    }
+    .cursor-blink { display: inline-block; width: 10px; height: 1.2em; background: var(--gold); vertical-align: bottom; animation: blink 1s step-end infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* Floating Icons Background */
+    #floating-bg {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      overflow: hidden; z-index: -1; pointer-events: none;
+    }
+    .float-item { position: absolute; font-size: 3rem; transform-origin: center; }
+    .layer-back { filter: blur(2px); opacity: 0.3; transform: scale(0.6); }
+    .layer-front { opacity: 0.7; transform: scale(1.1); }
+
+    /* Budget Step */
+    .step-title { font-size: 1.5rem; font-weight: bold; margin-bottom: 2rem; display: flex; align-items: center; gap: 0.5rem; text-transform: uppercase; letter-spacing: 1px; }
+    .step-title span { color: var(--gold); }
+    
+    .budget-display { font-size: 4rem; font-weight: 900; color: var(--gold); text-align: center; margin-bottom: 2rem; font-variant-numeric: tabular-nums; }
+    
+    .slider-container { position: relative; width: 100%; padding: 1rem 0; }
+    .slider-track { width: 100%; height: 8px; background: var(--surface-2); border-radius: 4px; position: relative; }
+    .slider-fill { position: absolute; top: 0; left: 0; height: 100%; background: linear-gradient(90deg, var(--gold-dim), var(--gold)); border-radius: 4px; width: 50%; pointer-events: none; }
+    input[type=range] {
+      -webkit-appearance: none; width: 100%; background: transparent; position: absolute; top: 50%; transform: translateY(-50%); left: 0; margin: 0;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: var(--gold);
+      box-shadow: 0 0 0 8px var(--gold-glow); margin-top: -8px; /* Offset for track */
+    }
+    
+    .budget-tags { display: flex; justify-content: space-between; margin-top: 1rem; color: var(--text-muted); font-size: 0.85rem; font-weight: bold; text-transform: uppercase; }
+    .b-tag.active { color: var(--gold); text-shadow: 0 0 10px var(--gold-glow); transition: 0.3s; }
+
+    /* Categories Step */
+    .categories-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1rem; perspective: 1000px; }
+    .cat-wrapper {
+      width: 100%; aspect-ratio: 1; perspective: 1000px; cursor: none;
+    }
+    .cat-card {
+      position: relative; width: 100%; height: 100%; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      transform-style: preserve-3d; border-radius: 1rem;
+    }
+    .cat-wrapper.flipped .cat-card { transform: rotateY(180deg); }
+    .cat-face {
+      position: absolute; inset: 0; backface-visibility: hidden; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 1rem; padding: 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .cat-wrapper:hover .cat-face.front { border-color: var(--gold); }
+    .cat-wrapper.selected .cat-face { box-shadow: inset 0 0 20px var(--gold-glow); border-color: var(--gold-dim); }
+    .cat-face.back { transform: rotateY(180deg); align-items: flex-start; justify-content: flex-start; gap: 0.5rem; overflow-y: auto; }
+    
+    .cat-icon { font-size: 2.5rem; margin-bottom: 0.5rem; display: inline-block; }
+    .cat-label { font-weight: 600; font-size: 0.9rem; }
+    .check-badge { position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; background: var(--gold); color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; opacity: 0; font-size: 12px; transform: scale(0); transition: 0.3s; }
+    .cat-wrapper.selected .check-badge { opacity: 1; transform: scale(1); }
+
+    .sub-chip { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-muted); font-size: 0.75rem; padding: 0.25rem 0.6rem; border-radius: 99px; transition: 0.2s; cursor: none; white-space: nowrap; }
+    .sub-chip.active { background: var(--gold); color: #000; border-color: var(--gold); font-weight: bold; }
+
+    /* Action Button */
+    .action-row { text-align: center; margin-top: 4rem; position: relative; }
+    .btn-dekh {
+      background: var(--gold); color: var(--bg); font-weight: 900; font-size: 1.25rem;
+      padding: 1rem 3rem; border-radius: 99px; border: none; overflow: hidden; position: relative;
+      cursor: none; text-transform: uppercase; letter-spacing: 1px; transition: transform 0.2s;
+      transform-origin: center;
+    }
+    .btn-dekh:hover { transform: scale(1.05); }
+    
+    /* Search Loading Overlay */
+    #search-overlay {
+      position: fixed; inset: 0; background: var(--bg); z-index: 9000;
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      visibility: hidden; opacity: 0;
+    }
+    .particle-container { position: absolute; inset: 0; perspective: 800px; overflow: hidden; }
+    .particle { position: absolute; width: 4px; height: 4px; background: var(--gold); border-radius: 50%; box-shadow: 0 0 10px var(--gold); }
+    .search-text { font-size: 2rem; font-weight: bold; color: var(--gold); z-index: 10; height: 3rem; text-align: center; }
+    .search-progress-wrap { width: 300px; height: 4px; background: var(--surface-2); border-radius: 2px; margin-top: 2rem; z-index: 10; overflow: hidden; }
+    .search-progress { width: 0%; height: 100%; background: var(--gold); }
+
+    /* Results */
+    #results { display: none; }
+    .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
+    .deal-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 1rem; overflow: hidden;
+      position: relative; cursor: none; transform-style: preserve-3d;
+    }
+    .deal-card::before { /* Shimmer */
+      content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
+      background: linear-gradient(to right, transparent, rgba(245,197,24,0.05), transparent);
+      transform: skewX(-20deg); pointer-events: none; z-index: 5;
+    }
+    .deal-card:hover::before { left: 200%; transition: left 0.8s ease-in-out; }
+    
+    .deal-img { height: 160px; background: var(--surface-2); display: flex; align-items: center; justify-content: center; font-size: 4rem; position: relative; }
+    .hot-badge { position: absolute; top: 1rem; left: 1rem; background: var(--red-deal); color: white; padding: 0.25rem 0.75rem; border-radius: 99px; font-size: 0.75rem; font-weight: bold; transform-origin: center; box-shadow: 0 0 15px rgba(255,76,76,0.4); }
+    
+    .deal-info { padding: 1.5rem; }
+    .deal-platform { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem; }
+    .deal-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 1rem; line-height: 1.3; }
+    .deal-price-row { display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .price-new { font-size: 1.75rem; font-weight: 900; color: var(--gold); }
+    .price-orig { font-size: 0.9rem; color: var(--text-muted); text-decoration: line-through; }
+    .save-amt { color: var(--green-save); font-weight: bold; font-size: 0.9rem; }
+    
+    .btn-view {
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--gold-dim);
+      background: transparent; color: var(--gold); font-weight: bold; cursor: none;
+      transition: all 0.3s; margin-top: 1rem; position: relative; overflow: hidden;
+    }
+    .btn-view:hover { background: var(--gold); color: var(--bg); }
+    .btn-view .arrow { transform: translateX(-10px); opacity: 0; transition: 0.3s; }
+    .btn-view:hover .arrow { transform: translateX(0); opacity: 1; }
+
+    .ripple {
+      position: absolute; border-radius: 50%; background: rgba(245,197,24,0.4);
+      transform: scale(0); animation: ripple 0.6s linear; pointer-events: none;
+    }
+    @keyframes ripple { to { transform: scale(4); opacity: 0; } }
+
+    /* Empty State */
+    #empty-state { display: none; text-align: center; padding: 4rem 0; }
+    #empty-state svg { width: 100px; fill: var(--text-muted); margin: 0 auto 2rem; }
+
+  </style>
+</head>
+<body>
+  <div id="progress-bar"></div>
+  
+  <div class="cursor-dot" id="cursor-dot"></div>
+  <div class="cursor-ring" id="cursor-ring"></div>
+
+  <nav>
+    <div class="logo w-full" id="nav-logo"></div>
+  </nav>
+
+  <div id="floating-bg"></div>
+
+  <div class="container" id="main-content">
+    
+    <section id="hero">
+      <h1 class="hero-title">
+        <span class="hero-word">Budget</span>
+        <span class="hero-word">Dekh</span>
+      </h1>
+      <div class="hero-sub" id="typewriter"></div>
+    </section>
+
+    <section class="section" id="step-budget">
+      <h2 class="step-title"><span>01.</span> Setup Budget</h2>
+      <div class="budget-display">₹<span id="budget-val">15000</span></div>
+      <div class="slider-container">
+        <div class="slider-track"><div class="slider-fill" id="slider-fill"></div></div>
+        <input type="range" min="500" max="100000" step="500" value="15000" id="budget-slider">
+      </div>
+      <div class="budget-tags">
+        <span class="b-tag" id="tag-low">Bachat Mode 🪙</span>
+        <span class="b-tag active" id="tag-mid">Comfort Zone 😊</span>
+        <span class="b-tag" id="tag-high">Splurge Mode 🔥</span>
+      </div>
+    </section>
+
+    <section class="section" id="step-categories">
+      <h2 class="step-title"><span>02.</span> Pick Categories</h2>
+      <div class="categories-grid" id="cat-grid">
+        <!-- JS generated -->
+      </div>
+    </section>
+
+    <div class="action-row">
+      <button class="btn-dekh" id="btn-search">Dekh Deals →</button>
+    </div>
+
+  </div>
+
+  <div id="search-overlay">
+    <div class="particle-container" id="particles"></div>
+    <div class="search-text" id="search-text"></div>
+    <div class="search-progress-wrap"><div class="search-progress" id="search-bar"></div></div>
+  </div>
+
+  <div class="container" id="results">
+    <h2 class="step-title" style="margin-left: 1rem;"><span>🔥</span> Best Deals Found</h2>
+    <div class="results-grid" id="results-grid"></div>
+  </div>
+  
+  <div class="container" id="empty-state">
+    <svg viewBox="0 0 24 24"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>
+    <h2 id="empty-text" class="text-xl font-bold color-gold"></h2>
+  </div>
+
+  <script>
+    // Constants & Data
+    const catsData = [
+      { id:'c1', icon:'👕', name:'Clothes', subs:['Shirts','Jeans','T-Shirts','Ethnic'] },
+      { id:'c2', icon:'📱', name:'Electronics', subs:['Phones','Laptops','Tablets','Watches'] },
+      { id:'c3', icon:'📚', name:'Books', subs:['Fiction','Notebooks','Pens','Academic'] },
+      { id:'c4', icon:'👟', name:'Footwear', subs:['Sneakers','Formals','Sandals','Sports'] },
+      { id:'c5', icon:'🎧', name:'Gadgets', subs:['Earbuds','Speakers','Powerbanks','Cables'] },
+      { id:'c6', icon:'🏠', name:'Home', subs:['Decor','Storage','Kitchen','Lighting'] },
+    ];
+
+    const dummyDeals = [
+      { name: "Sony WH-1000XM5 Headphones", platform: "Amazon", orig: 34990, price: 29990, img: "🎧", hot: true },
+      { name: "Nike Air Force 1", platform: "Myntra", orig: 7495, price: 5995, img: "👟", hot: false },
+      { name: "Levi's 511 Slim Jeans", platform: "Flipkart", orig: 2999, price: 1499, img: "👖", hot: true },
+      { name: "boAt Stone 1200 Speaker", platform: "Amazon", orig: 6990, price: 2499, img: "🔊", hot: false }
+    ];
+
+    // CSS variables access
+    const rootStyles = getComputedStyle(document.documentElement);
+    const gold = rootStyles.getPropertyValue('--gold').trim();
+
+    // Setup Custom Cursor
+    const cursorDot = document.getElementById('cursor-dot');
+    const cursorRing = document.getElementById('cursor-ring');
+    
+    // Use quickTo for performant cursor following
+    const dotX = gsap.quickTo(cursorDot, "x", {duration: 0.1, ease: "power3", filter: "blur(0px)"});
+    const dotY = gsap.quickTo(cursorDot, "y", {duration: 0.1, ease: "power3"});
+    const ringX = gsap.quickTo(cursorRing, "x", {duration: 0.2, ease: "power3"});
+    const ringY = gsap.quickTo(cursorRing, "y", {duration: 0.2, ease: "power3"});
+
+    window.addEventListener("mousemove", (e) => {
+      dotX(e.clientX); dotY(e.clientY);
+      ringX(e.clientX); ringY(e.clientY);
+    });
+
+    // Scroll Progress
+    const progressBar = document.getElementById('progress-bar');
+    window.addEventListener('scroll', () => {
+      const scrollPx = document.documentElement.scrollTop;
+      const winHeightPx = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      const scrolled = `${(scrollPx / winHeightPx) * 100}%`;
+      progressBar.style.width = scrolled;
+    });
+
+    // Logo interact
+    const logoStr = "Budget Dekh";
+    const logoEl = document.getElementById('nav-logo');
+    logoStr.split('').forEach(char => {
+      const span = document.createElement('span');
+      span.innerHTML = char === ' ' ? '&nbsp;' : char;
+      span.style.display = 'inline-block';
+      logoEl.appendChild(span);
+    });
+    
+    logoEl.addEventListener('mouseenter', () => {
+      gsap.to(logoEl.children, {
+        y: () => gsap.utils.random(-10, 10),
+        x: () => gsap.utils.random(-5, 5),
+        rotation: () => gsap.utils.random(-15, 15),
+        color: gold,
+        stagger: 0.02,
+        duration: 0.3
+      });
+    });
+    logoEl.addEventListener('mouseleave', () => {
+      gsap.to(logoEl.children, { y: 0, x: 0, rotation: 0, color: "var(--text)", duration: 0.4, ease: "back.out(2)" });
+    });
+
+    // Hero Animations
+    gsap.from(".hero-word", {
+      y: 100, opacity: 0, duration: 1, stagger: 0.15, ease: "power4.out", delay: 0.2
+    });
+
+    const subText = "Apna budget daalo. Hum best deal dhundhenge.";
+    const subEl = document.getElementById('typewriter');
+    let subIdx = 0;
+    setTimeout(() => {
+      subEl.innerHTML = '<span id="tw-text"></span><span class="cursor-blink"></span>';
+      const twText = document.getElementById('tw-text');
+      const interval = setInterval(() => {
+        twText.textContent += subText[subIdx];
+        subIdx++;
+        if(subIdx === subText.length) clearInterval(interval);
+      }, 50);
+    }, 1000);
+
+    // Floating Background Generation & Logic
+    const floatBg = document.getElementById('floating-bg');
+    const icons = ['👕','👗','💻','📱','📓','🎧','👟','💼','📷','🖥️','⌨️','🛋️'];
+    const floatingNodes = [];
+
+    // Check mobile
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
+    
+    if(!isMobile) {
+      for(let i=0; i<30; i++) {
+        const el = document.createElement('div');
+        el.className = `float-item ${Math.random() > 0.5 ? 'layer-front' : 'layer-back'}`;
+        el.textContent = icons[Math.floor(Math.random() * icons.length)];
+        
+        // Random pos
+        const rx = Math.random() * 100;
+        const ry = Math.random() * 100;
+        el.style.left = `${rx}vw`;
+        el.style.top = `${ry}vh`;
+        
+        floatBg.appendChild(el);
+        floatingNodes.push(el);
+
+        // Base idle float
+        gsap.to(el, {
+          y: `+=${gsap.utils.random(10, 25)}`,
+          rotation: gsap.utils.random(-15, 15),
+          duration: gsap.utils.random(3, 8),
+          repeat: -1,
+          yoyo: true,
+          ease: "sine.inOut"
+        });
+      }
+
+      // Repel logic
+      window.addEventListener('mousemove', (e) => {
+        floatingNodes.forEach(node => {
+          const rect = node.getBoundingClientRect();
+          const objX = rect.left + rect.width/2;
+          const objY = rect.top + rect.height/2;
+          const dist = Math.hypot(e.clientX - objX, e.clientY - objY);
+          
+          if(dist < 180) {
+            const angle = Math.atan2(objY - e.clientY, objX - e.clientX);
+            const force = (180 - dist) * 0.15;
+            gsap.to(node, {
+              x: Math.cos(angle)*force, 
+              y: Math.sin(angle)*force,
+              rotation: gsap.utils.random(-10,10),
+              duration: 0.5, 
+              ease: "power2.out",
+              overwrite: "auto"
+            });
+          } else {
+            // Return to natural center 
+            gsap.to(node, {x:0, duration: 1.5, ease: "power2.inOut"});
+            // Don't overwrite Y as it disrupts the idle float completely, just tween X back
+          }
+        });
+      });
+    }
+
+    // Budget Slider Logic
+    const slider = document.getElementById('budget-slider');
+    const fill = document.getElementById('slider-fill');
+    const bValDisp = document.getElementById('budget-val');
+    const tags = [
+      document.getElementById('tag-low'),
+      document.getElementById('tag-mid'),
+      document.getElementById('tag-high')
+    ];
+    
+    let budgetObj = { val: 15000 };
+
+    function updateSlider() {
+      const v = parseInt(slider.value);
+      const pct = ((v - 500) / (100000 - 500)) * 100;
+      fill.style.width = `${pct}%`;
+
+      // Animate number
+      gsap.to(budgetObj, {
+        val: v, duration: 0.4, roundProps: "val",
+        onUpdate: () => { bValDisp.textContent = budgetObj.val.toLocaleString('en-IN'); }
+      });
+
+      // Update tags
+      tags.forEach(t => t.classList.remove('active'));
+      if(v <= 5000) tags[0].classList.add('active');
+      else if(v <= 40000) tags[1].classList.add('active');
+      else tags[2].classList.add('active');
+    }
+
+    slider.addEventListener('input', updateSlider);
+    updateSlider(); // init
+
+    // Slider Cursor interaction
+    slider.addEventListener('mouseenter', () => cursorRing.classList.add('hover-resize'));
+    slider.addEventListener('mouseleave', () => cursorRing.classList.remove('hover-resize'));
+
+    // Category Grid Builder
+    const grid = document.getElementById('cat-grid');
+    catsData.forEach(c => {
+      const wrap = document.createElement('div');
+      wrap.className = 'cat-wrapper';
+      wrap.dataset.id = c.id;
+
+      let subsHtml = c.subs.map(s => `<div class="sub-chip">${s}</div>`).join('');
+
+      wrap.innerHTML = `
+        <div class="cat-card">
+          <div class="cat-face front">
+            <span class="cat-icon" style="animation: float 3s ease-in-out infinite alternate transform-origin-bottom;">${c.icon}</span>
+            <span class="cat-label">${c.name}</span>
+            <div class="check-badge">✓</div>
+          </div>
+          <div class="cat-face back">
+            ${subsHtml}
+          </div>
+        </div>
+      `;
+      grid.appendChild(wrap);
+
+      // Add float keyframes globally if needed or let GSAP handle icon float
+      const icon = wrap.querySelector('.cat-icon');
+      gsap.to(icon, { y: -5, duration: 1.5, repeat: -1, yoyo: true, ease: "sine.inOut" });
+
+      // Click flip logic (don't flip if clicking a chip)
+      wrap.addEventListener('click', (e) => {
+        if(e.target.classList.contains('sub-chip')) {
+          e.target.classList.toggle('active');
+          // Scale bounce
+          if(e.target.classList.contains('active')) {
+            gsap.fromTo(e.target, {scale: 0.8}, {scale: 1.08, duration: 0.4, ease: "elastic.out(1, 0.4)"});
+            wrap.classList.add('selected'); // Auto select category if sub clicked
+          }
+          return;
+        }
+        wrap.classList.toggle('flipped');
+        if(!wrap.classList.contains('flipped')) {
+            // if flipping back to front and has active chips, select it
+            const hasActive = wrap.querySelectorAll('.sub-chip.active').length > 0;
+            if(hasActive) wrap.classList.add('selected');
+        }
+      });
+
+      // Cursor states & Magnetic
+      wrap.addEventListener('mouseenter', () => cursorRing.classList.add('hover-select'));
+      wrap.addEventListener('mouseleave', () => {
+        cursorRing.classList.remove('hover-select');
+        gsap.to(wrap.querySelector('.cat-card'), {x: 0, y: 0, duration: 0.5, ease: "elastic.out(1, 0.3)"});
+      });
+
+      wrap.addEventListener('mousemove', (e) => {
+        const rect = wrap.getBoundingClientRect();
+        const cx = rect.left + rect.width/2;
+        const cy = rect.top + rect.height/2;
+        // magnetic pull
+        const tx = (e.clientX - cx) * 0.15;
+        const ty = (e.clientY - cy) * 0.15;
+        gsap.to(wrap.querySelector('.cat-card'), {x: tx, y: ty, duration: 0.2});
+      });
+    });
+
+    // Ripple util
+    function createRipple(e, el) {
+      const circle = document.createElement('span');
+      const d = Math.max(el.clientWidth, el.clientHeight);
+      circle.style.width = circle.style.height = `${d}px`;
+      circle.style.left = `${e.clientX - el.getBoundingClientRect().left - d/2}px`;
+      circle.style.top = `${e.clientY - el.getBoundingClientRect().top - d/2}px`;
+      circle.classList.add('ripple');
+      el.appendChild(circle);
+      setTimeout(() => circle.remove(), 600);
+    }
+
+    // Search Action Sequence
+    const btnSearch = document.getElementById('btn-search');
+    const searchOverlay = document.getElementById('search-overlay');
+    const particleContainer = document.getElementById('particles');
+    const searchText = document.getElementById('search-text');
+    const searchBar = document.getElementById('search-bar');
+    const resultsContainer = document.getElementById('results');
+    const resultsGrid = document.getElementById('results-grid');
+    const emptyState = document.getElementById('empty-state');
+    const mainContent = document.getElementById('main-content');
+    
+    // Add btn hover states
+    btnSearch.addEventListener('mouseenter', () => cursorRing.classList.add('hover-select'));
+    btnSearch.addEventListener('mouseleave', () => cursorRing.classList.remove('hover-select'));
+
+    btnSearch.addEventListener('click', (e) => {
+      createRipple(e, btnSearch);
+      
+      const v = parseInt(slider.value);
+      // Determine if we show empty state (e.g. budget too low)
+      const willSucceed = v > 2000;
+
+      // 1. Morph button
+      gsap.to(btnSearch, {
+        width: 300, 
+        text: "Searching...", 
+        duration: 0.4
+      });
+
+      setTimeout(() => {
+        // 2. Show overlay
+        gsap.set(searchOverlay, {visibility: "visible", autoAlpha: 1});
+        gsap.fromTo(searchOverlay, {clipPath: "circle(0% at 50% 50%)"}, {clipPath: "circle(150% at 50% 50%)", duration: 0.8, ease: "power2.inOut"});
+
+        // Generate particles
+        particleContainer.innerHTML = '';
+        const pArr = [];
+        for(let i=0; i<50; i++) {
+          const p = document.createElement('div');
+          p.className = 'particle';
+          p.style.left = '50%'; p.style.top = '50%';
+          particleContainer.appendChild(p);
+          pArr.push(p);
+
+          // Orbit animation
+          gsap.set(p, {
+            rotation: Math.random() * 360,
+            transformOrigin: `${gsap.utils.random(50, 200)}px center`
+          });
+          gsap.to(p, {
+            rotation: "+=360",
+            duration: gsap.utils.random(2, 5),
+            repeat: -1,
+            ease: "linear"
+          });
+        }
+
+        // 3. Cycle Text
+        const msgs = ["🔍 Searching Flipkart...", "🔍 Checking Amazon...", "🔍 Comparing Myntra...", "🔍 Finding best price..."];
+        const tl = gsap.timeline();
+        
+        msgs.forEach((msg, i) => {
+          tl.to(searchText, {
+            text: msg, duration: 0.1
+          }).fromTo(searchText, {opacity: 0, y: 10}, {opacity: 1, y: 0, duration: 0.3})
+            .to(searchText, {opacity: 0, y: -10, duration: 0.3, delay: 0.4});
+        });
+
+        // 4. Progress bar
+        gsap.to(searchBar, {width: "100%", duration: tl.totalDuration(), ease: "none"});
+
+        // 5. Build results & exit overlay
+        tl.call(() => {
+          // Hide main content, show results
+          mainContent.style.display = 'none';
+          
+          if(willSucceed) {
+            resultsContainer.style.display = 'block';
+            buildResults();
+          } else {
+            emptyState.style.display = 'block';
+            // Typewriter empty
+            const et = document.getElementById('empty-text');
+            et.innerHTML = '';
+            const msg = "Thoda budget badhao yaar 😅";
+            let c = 0;
+            const iv = setInterval(()=>{
+              et.innerHTML += msg[c]; c++;
+              if(c === msg.length) clearInterval(iv);
+            }, 60);
+          }
+
+          // Exit overlay radial wipe
+          gsap.to(searchOverlay, {clipPath: "circle(0% at 50% 50%)", duration: 0.6, ease: "power2.in", onComplete: () => {
+            searchOverlay.style.visibility = 'hidden';
+            // Start results entry anim
+            if(willSucceed) {
+              gsap.fromTo(".deal-card", 
+                {y: 40, opacity: 0},
+                {y: 0, opacity: 1, duration: 0.6, stagger: 0.08, ease: "back.out(1.5)"}
+              );
+              // Save counter animation
+              document.querySelectorAll('.save-val').forEach(el => {
+                const target = parseInt(el.dataset.val);
+                let obj = {v:0};
+                gsap.to(obj, {v: target, duration: 1.5, ease: "power2.out", onUpdate: () => {
+                  el.innerText = `₹${Math.round(obj.v)}`;
+                }});
+              });
+            }
+          }});
+        });
+
+      }, 600);
+    });
+
+    // Build Results HTML
+    function buildResults() {
+      resultsGrid.innerHTML = '';
+      dummyDeals.forEach((d, i) => {
+        const wrap = document.createElement('div');
+        const save = d.orig - d.price;
+        wrap.className = 'deal-card';
+        wrap.innerHTML = `
+          ${d.hot ? '<div class="hot-badge">Hot Deal 🔥</div>' : ''}
+          <div class="deal-img">${d.img}</div>
+          <div class="deal-info">
+            <div class="deal-platform">${d.platform}</div>
+            <div class="deal-title">${d.name}</div>
+            <div class="deal-price-row">
+              <span class="price-new">₹${d.price.toLocaleString('en-IN')}</span>
+              <span class="price-orig">₹${d.orig.toLocaleString('en-IN')}</span>
+            </div>
+            <div class="save-amt">Save <span class="save-val" data-val="${save}">0</span></div>
+            <button class="btn-view">
+              View Deal <span class="arrow">→</span>
+            </button>
+          </div>
+        `;
+        resultsGrid.appendChild(wrap);
+
+        // Hover magnetic & cursor
+        wrap.addEventListener('mouseenter', () => cursorRing.classList.add('hover-deal'));
+        wrap.addEventListener('mouseleave', () => {
+          cursorRing.classList.remove('hover-deal');
+          gsap.to(wrap, {rotationX: 0, rotationY: 0, duration: 0.5});
+        });
+
+        wrap.addEventListener('mousemove', (e) => {
+          const r = wrap.getBoundingClientRect();
+          const cx = r.left + r.width/2;
+          const cy = r.top + r.height/2;
+          const rx = -(e.clientY - cy) * 0.04; // 6 deg max rough
+          const ry = (e.clientX - cx) * 0.04;
+          gsap.to(wrap, {rotationX: rx, rotationY: ry, duration: 0.1});
+        });
+
+        // specific hot badge pulse
+        if(d.hot) {
+          const hb = wrap.querySelector('.hot-badge');
+          gsap.to(hb, {scale: 1.06, repeat: -1, yoyo: true, duration: 0.8});
+        }
+      });
+    }
+
+  </script>
+</body>
+</html>

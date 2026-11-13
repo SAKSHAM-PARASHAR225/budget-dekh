@@ -1,0 +1,309 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== Budget Dekh — Buttermax-Inspired Design System ===== */
+
+:root {
+  --bg: #0A0A0A;
+  --bg-card: #111111;
+  --bg-card-hover: #1A1A1A;
+  --gold: #FFD600;
+  --gold-dim: rgba(255, 214, 0, 0.15);
+  --gold-glow: rgba(255, 214, 0, 0.25);
+  --text: #F0F0F0;
+  --text-muted: #868686;
+  --text-dim: #4A4A4A;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-gold: rgba(255, 214, 0, 0.2);
+  --green: #3ecf8e;
+  --red: #ff5555;
+  --blue: #4da6ff;
+  --purple: #a78bfa;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  min-height: 100vh;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  color: var(--text);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Subtle noise texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--gold);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #FFE433;
+}
+
+/* ===== Typography Classes ===== */
+.text-massive {
+  font-size: clamp(3rem, 10vw, 8rem);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+}
+
+.text-display {
+  font-size: clamp(2rem, 5vw, 4rem);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.text-heading {
+  font-size: clamp(1.25rem, 3vw, 2rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+/* ===== Glass / Card Utilities (Buttermax Style) ===== */
+@layer components {
+  .glass {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  }
+
+  .glass-hover:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-gold);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--border-gold);
+  }
+
+  .pill-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1.5rem;
+    border-radius: 9999px;
+    border: 1.5px solid var(--gold);
+    color: var(--gold);
+    font-weight: 600;
+    font-size: 0.875rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    background: transparent;
+  }
+
+  .pill-btn:hover {
+    background: var(--gold);
+    color: var(--bg);
+    box-shadow: 0 0 30px var(--gold-glow);
+  }
+
+  .pill-btn-filled {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.625rem 2rem;
+    border-radius: 9999px;
+    border: none;
+    background: var(--gold);
+    color: var(--bg);
+    font-weight: 700;
+    font-size: 0.875rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+  }
+
+  .pill-btn-filled:hover {
+    box-shadow: 0 0 40px var(--gold-glow);
+    transform: scale(1.02);
+  }
+}
+
+/* ===== Decorative Animated Shapes ===== */
+.deco-ring {
+  position: absolute;
+  border: 1.5px solid var(--border-gold);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: deco-spin 20s linear infinite;
+}
+
+.deco-ring-1 {
+  width: 400px;
+  height: 400px;
+  top: 10%;
+  right: -100px;
+  opacity: 0.3;
+}
+
+.deco-ring-2 {
+  width: 250px;
+  height: 250px;
+  bottom: 15%;
+  left: -60px;
+  opacity: 0.2;
+  animation-direction: reverse;
+  animation-duration: 15s;
+}
+
+.deco-ring-3 {
+  width: 600px;
+  height: 600px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.08;
+  animation-duration: 30s;
+}
+
+@keyframes deco-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Gold glow dot */
+.deco-dot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: var(--gold);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: deco-pulse 3s ease-in-out infinite;
+}
+
+@keyframes deco-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50%      { opacity: 0.8; transform: scale(1.5); }
+}
+
+/* Grid dots pattern */
+.deco-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle, rgba(255,214,0,0.06) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+/* Section divider */
+.section-divider {
+  width: 60px;
+  height: 3px;
+  background: var(--gold);
+  border-radius: 2px;
+}
+
+/* ===== Number formatting ===== */
+.inr-format {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== Loading spinner ===== */
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ===== Progress bar ===== */
+.progress-bar {
+  background: linear-gradient(90deg, var(--gold), #FFE433, var(--gold));
+  background-size: 200% 100%;
+  animation: progressShimmer 2s ease-in-out infinite;
+}
+
+@keyframes progressShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ===== Priority dots ===== */
+.priority-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 2px;
+}
+
+.priority-dot.filled {
+  background: var(--gold);
+}
+
+.priority-dot.empty {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ===== Confetti canvas ===== */
+#confetti-canvas {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ===== Gold text gradient ===== */
+.gold-text {
+  background: linear-gradient(135deg, #FFD600 0%, #FFE433 50%, #FFD600 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ===== Hover card lift ===== */
+.card-lift {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--border-gold);
+}
+
+/* ===== Selection color ===== */
+::selection {
+  background: var(--gold);
+  color: var(--bg);
+}
